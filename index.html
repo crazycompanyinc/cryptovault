@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptoVault — Wallet Inteligente con IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="preload" as="style" onload="this.rel='stylesheet'">
+<style>
+:root{--bg:#050508;--bg2:#0a0a0f;--bg3:#101018;--surface:rgba(255,215,0,0.02);--border:rgba(255,215,0,0.06);--border-h:rgba(255,215,0,0.2);--text:#e8e8f0;--text2:#6a6a80;--text3:#3a3a50;--gold:#ffd700;--dgold:#8a6d3b;--green:#00ff88;--glow:0 0 30px rgba(255,215,0,0.1);--font-h:'Space Grotesk',sans-serif;--font-m:'JetBrains Mono',monospace;--font-b:'Inter',sans-serif;--ease:cubic-bezier(0.16,1,0.3,1)}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--font-b);background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden;cursor:none}
+::selection{background:var(--gold);color:#000}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--dgold);border-radius:2px}
+
+.cursor-glow{position:fixed;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.06) 0%,transparent 70%);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);will-change:left,top;mix-blend-mode:screen}
+.cursor-dot{position:fixed;width:6px;height:6px;border-radius:50%;background:var(--gold);pointer-events:none;z-index:10000;transform:translate(-50%,-50%);will-change:left,top;box-shadow:0 0 10px var(--gold)}
+.noise{position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.015;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:512px}
+
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 48px;display:flex;justify-content:space-between;align-items:center;transition:all .6s var(--ease)}
+.nav.scrolled{padding:12px 48px;background:rgba(5,5,8,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:var(--font-h);font-size:1.3rem;font-weight:700;color:var(--text);text-decoration:none}
+.nav-logo span{color:var(--gold)}
+.nav-links{display:flex;gap:32px;list-style:none}
+.nav-links a{color:var(--text2);text-decoration:none;font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;transition:color .3s}
+.nav-links a:hover{color:var(--gold)}
+.nav-cta{padding:10px 24px;border:1px solid var(--gold);border-radius:4px;color:var(--gold);background:transparent;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;transition:all .4s var(--ease);font-family:var(--font-h);cursor:pointer}
+.nav-cta:hover{background:var(--gold);color:#000;box-shadow:0 0 30px rgba(255,215,0,0.2)}
+
+.hero{position:relative;min-height:100vh;display:grid;grid-template-columns:55% 45%;overflow:hidden}
+.hero-left{display:flex;flex-direction:column;justify-content:center;padding:120px 48px 80px 56px;z-index:2}
+.hero-right{position:relative;overflow:hidden}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:12px;margin-bottom:24px;font-family:var(--font-h);font-size:.65rem;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:var(--gold)}
+.hero-eyebrow::before{content:'';width:24px;height:1px;background:var(--gold);opacity:.5}
+.hero-title{font-family:var(--font-h);font-size:clamp(2.4rem,5vw,4.5rem);font-weight:700;line-height:1.05;letter-spacing:-.02em;margin-bottom:20px}
+.hero-title .accent{color:var(--gold)}
+.hero-desc{font-size:1rem;color:var(--text2);max-width:440px;line-height:1.8;margin-bottom:36px;font-weight:300}
+.hero-cta-row{display:flex;gap:16px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;text-decoration:none;border-radius:4px;transition:all .4s var(--ease);border:none;cursor:pointer;font-family:var(--font-h)}
+.btn-primary{background:var(--gold);color:#000}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(255,215,0,0.3)}
+.btn-ghost{border:1px solid var(--border);color:var(--text);background:transparent}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+
+/* MATRIX RAIN */
+#matrix-canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.15}
+
+/* TICKER */
+.ticker-wrap{padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:var(--bg2)}
+.ticker{display:flex;gap:48px;animation:ticker 30s linear infinite;width:max-content}
+.ticker-item{display:flex;align-items:center;gap:12px;white-space:nowrap}
+.ticker-symbol{font-family:var(--font-h);font-size:.8rem;font-weight:600;color:var(--text)}
+.ticker-price{font-family:var(--font-m);font-size:.85rem;color:var(--text2)}
+.ticker-change{font-family:var(--font-m);font-size:.75rem;padding:2px 8px;border-radius:2px}
+.ticker-change.up{color:var(--green);background:rgba(0,255,136,0.1)}
+.ticker-change.down{color:#ff4444;background:rgba(255,68,68,0.1)}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+.stats{padding:80px 48px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:48px;max-width:1200px;margin:0 auto}
+.stat{text-align:center}
+.stat-num{font-family:var(--font-h);font-size:clamp(2rem,4vw,3rem);font-weight:700;color:var(--gold);line-height:1}
+.stat-label{font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.12em;margin-top:8px}
+
+.section{padding:100px 48px;position:relative}
+.section-label{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-family:var(--font-h);font-size:.65rem;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:var(--gold)}
+.section-label::before{content:'';width:24px;height:1px;background:var(--gold);opacity:.5}
+.section-title{font-family:var(--font-h);font-size:clamp(1.8rem,3.5vw,3rem);font-weight:700;line-height:1.1;margin-bottom:16px}
+.section-desc{font-size:1rem;color:var(--text2);max-width:600px;line-height:1.8;margin-bottom:48px}
+
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1200px;margin:0 auto}
+.feature-card{padding:36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;transition:all .5s var(--ease);position:relative;overflow:hidden}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity .5s}
+.feature-card:hover{border-color:var(--border-h);transform:translateY(-4px);box-shadow:var(--glow)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:48px;height:48px;border-radius:8px;background:rgba(255,215,0,0.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:1.5rem}
+.feature-card h3{font-family:var(--font-h);font-size:1rem;font-weight:600;margin-bottom:8px}
+.feature-card p{font-size:.85rem;color:var(--text2);line-height:1.7}
+
+/* STAKING */
+.staking-calc{max-width:600px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px}
+.staking-row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border)}
+.staking-row:last-child{border-bottom:none}
+.staking-label{font-size:.85rem;color:var(--text2)}
+.staking-value{font-family:var(--font-m);font-size:1rem;color:var(--gold)}
+.staking-value.green{color:var(--green)}
+
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1000px;margin:0 auto}
+.price-card{padding:40px 32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;text-align:center;transition:all .5s var(--ease);position:relative}
+.price-card.featured{border-color:var(--gold);box-shadow:var(--glow)}
+.price-card.featured::before{content:'POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:4px 16px;background:var(--gold);color:#000;font-family:var(--font-h);font-size:.6rem;font-weight:700;letter-spacing:.15em;border-radius:2px}
+.price-name{font-family:var(--font-h);font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--text2);margin-bottom:16px}
+.price-amount{font-family:var(--font-h);font-size:3rem;font-weight:700;color:var(--text);line-height:1}
+.price-amount span{font-size:1rem;color:var(--text2)}
+.price-features{list-style:none;margin:24px 0;text-align:left}
+.price-features li{padding:8px 0;font-size:.85rem;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.price-features li::before{content:'◆';color:var(--gold);font-size:.6rem}
+
+.cta{padding:120px 48px;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,215,0,0.03) 0%,transparent 70%)}
+.cta-title{font-family:var(--font-h);font-size:clamp(2rem,4vw,3.5rem);font-weight:700;margin-bottom:20px;position:relative}
+.cta-desc{font-size:1.1rem;color:var(--text2);max-width:500px;margin:0 auto 36px;position:relative}
+
+.footer{padding:60px 48px;border-top:1px solid var(--border)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;max-width:1200px;margin:0 auto}
+.footer-brand{font-family:var(--font-h);font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:12px}
+.footer-brand span{color:var(--gold)}
+.footer-desc{font-size:.85rem;color:var(--text2);line-height:1.7;max-width:300px}
+.footer h5{font-family:var(--font-h);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--text);margin-bottom:16px}
+.footer-links{list-style:none}
+.footer-links li{margin-bottom:8px}
+.footer-links a{color:var(--text2);text-decoration:none;font-size:.85rem;transition:color .3s}
+.footer-links a:hover{color:var(--gold)}
+.footer-bottom{margin-top:48px;padding-top:24px;border-top:1px solid var(--border);text-align:center;font-size:.75rem;color:var(--text3)}
+
+/* HEX PATTERN */
+.hex-bg{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5L55 17.5V42.5L30 55L5 42.5V17.5L30 5Z' fill='none' stroke='rgba(255,215,0,0.03)' stroke-width='1'/%3E%3C/svg%3E");background-size:60px 60px}
+
+@media(max-width:768px){
+.hero{grid-template-columns:1fr;min-height:auto;padding-top:100px}
+.hero-left{padding:40px 24px}
+.hero-right{height:400px}
+.stats-grid{grid-template-columns:repeat(2,1fr);gap:32px}
+.features,.pricing{grid-template-columns:1fr}
+.footer-grid{grid-template-columns:1fr;gap:32px}
+.nav{padding:16px 24px}
+.nav-links{display:none}
+}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="cursor-glow" id="cGlow"></div>
+<div class="cursor-dot" id="cDot"></div>
+
+<nav class="nav" id="nav">
+  <a href="#" class="nav-logo">CRYPTO<span>VAULT</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#staking">Staking</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+  </ul>
+  <a href="#cta" class="nav-cta">Get Started</a>
+</nav>
+
+<section class="hero" id="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">AI-Powered Crypto</div>
+    <h1 class="hero-title">Wallet inteligente.<br>Trading con <span class="accent">IA.</span></h1>
+    <p class="hero-desc">Wallet y exchange con trading IA, staking automático y seguridad military-grade. Tu patrimonio, protegido.</p>
+    <div class="hero-cta-row">
+      <a href="#cta" class="btn btn-primary">→ Start Trading</a>
+      <a href="#features" class="btn btn-ghost">Explore</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hex-bg"></div>
+    <canvas id="matrix-canvas"></canvas>
+  </div>
+</section>
+
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<section class="stats">
+  <div class="stats-grid">
+    <div class="stat"><div class="stat-num">$2.4B</div><div class="stat-label">Assets Secured</div></div>
+    <div class="stat"><div class="stat-num">150K+</div><div class="stat-label">Active Users</div></div>
+    <div class="stat"><div class="stat-num">99.9%</div><div class="stat-label">Uptime</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-label">Breaches</div></div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="section-label">Features</div>
+  <h2 class="section-title">Todo en una wallet.<br>Nada que perder.</h2>
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <h3>AI Trading</h3>
+      <p>Algoritmos de IA que analizan el mercado 24/7 y ejecutan trades óptimos automáticamente.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Military Security</h3>
+      <p>Encriptación AES-256, multi-sig, cold storage y biometría. Bancos de nivel militar.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📈</div>
+      <h3>Auto Staking</h3>
+      <p>Staking automático con los mejores yields. Compound interest sin intervención.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💱</div>
+      <h3>Instant Swap</h3>
+      <p>Swap entre 500+ criptomonedas con las mejores tasas y gas optimizado.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Portfolio AI</h3>
+      <p>Tu cartera optimizada por IA. Rebalanceo automático y alertas inteligentes.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌐</div>
+      <h3>DeFi Gateway</h3>
+      <p>Acceso directo a protocolos DeFi desde la wallet. Yield farming simplificado.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="staking" style="background:var(--bg2)">
+  <div class="section-label">Staking Calculator</div>
+  <h2 class="section-title">Calcula tus rendimientos.</h2>
+  <div class="staking-calc">
+    <div class="staking-row"><span class="staking-label">Deposit</span><span class="staking-value">$10,000 USDC</span></div>
+    <div class="staking-row"><span class="staking-label">APY</span><span class="staking-value green">12.4%</span></div>
+    <div class="staking-row"><span class="staking-label">Monthly Yield</span><span class="staking-value green">+$103</span></div>
+    <div class="staking-row"><span class="staking-label">Annual Yield</span><span class="staking-value green">+$1,240</span></div>
+    <div class="staking-row"><span class="staking-label">3-Year Compound</span><span class="staking-value green">+$4,218</span></div>
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="section-label">Pricing</div>
+  <h2 class="section-title">Planes transparentes.</h2>
+  <div class="pricing">
+    <div class="price-card">
+      <div class="price-name">Basic</div>
+      <div class="price-amount">$0<span>/mo</span></div>
+      <ul class="price-features"><li>Wallet + Swap</li><li>Basic security</li><li>Email support</li></ul>
+      <a href="#cta" class="btn btn-ghost" style="width:100%;justify-content:center">Start Free</a>
+    </div>
+    <div class="price-card featured">
+      <div class="price-name">Pro</div>
+      <div class="price-amount">$29<span>/mo</span></div>
+      <ul class="price-features"><li>AI Trading</li><li>Auto staking</li><li>Priority support</li><li>Advanced analytics</li></ul>
+      <a href="#cta" class="btn btn-primary" style="width:100%;justify-content:center">Start Free</a>
+    </div>
+    <div class="price-card">
+      <div class="price-name">Institutional</div>
+      <div class="price-amount">Custom</div>
+      <ul class="price-features"><li>White-label</li><li>Dedicated infra</li><li>SLA 99.99%</li><li>Custom integrations</li></ul>
+      <a href="#cta" class="btn btn-ghost" style="width:100%;justify-content:center">Contact</a>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="cta">
+  <h2 class="cta-title">¿Listo para el futuro?</h2>
+  <p class="cta-desc">Empieza gratis. Sin tarjeta. Seguridad militar desde el día 1.</p>
+  <a href="#" class="btn btn-primary" style="font-size:.9rem;padding:18px 40px">→ Create Wallet — Free</a>
+</section>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">CRYPTO<span>VAULT</span></div>
+      <p class="footer-desc">Wallet y exchange con trading IA, staking automático y seguridad military-grade.</p>
+    </div>
+    <div><h5>Product</h5><ul class="footer-links"><li><a href="#">Wallet</a></li><li><a href="#">Trading</a></li><li><a href="#">Staking</a></li></ul></div>
+    <div><h5>Company</h5><ul class="footer-links"><li><a href="#">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Careers</a></li></ul></div>
+    <div><h5>Legal</h5><ul class="footer-links"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">Compliance</a></li></ul></div>
+  </div>
+  <div class="footer-bottom">© 2026 CryptoVault. ZOO Technologies.</div>
+</footer>
+
+<script>
+var gx=0,gy=0,cx=0,cy=0,tx=0,ty=0;
+var cg=document.getElementById('cGlow'),cd=document.getElementById('cDot');
+document.addEventListener('mousemove',function(e){tx=e.clientX;ty=e.clientY});
+function cursorLoop(){
+  gx+=(tx-gx)*0.08;gy+=(ty-gy)*0.08;
+  cx+=(tx-cx)*0.15;cy+=(ty-cy)*0.15;
+  if(cg){cg.style.left=gx+'px';cg.style.top=gy+'px';}
+  if(cd){cd.style.left=cx+'px';cd.style.top=cy+'px';}
+  requestAnimationFrame(cursorLoop);
+}
+cursorLoop();
+
+var nav=document.getElementById('nav'),ticking=false;
+window.addEventListener('scroll',function(){
+  if(!ticking){requestAnimationFrame(function(){nav.classList.toggle('scrolled',window.scrollY>80);ticking=false});ticking=true}
+},{passive:true});
+
+// MATRIX RAIN
+(function(){
+  var canvas=document.getElementById('matrix-canvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var w,h,cols=[];
+  var chars='0123456789ABCDEF₿ΞŁ';
+  function resize(){w=canvas.width=canvas.offsetWidth;h=canvas.height=canvas.offsetHeight;cols=[];for(var i=0;i<w/14;i++)cols[i]={y:Math.random()*h,speed:Math.random()*3+1}}
+  function draw(){
+    ctx.fillStyle='rgba(5,5,8,0.05)';
+    ctx.fillRect(0,0,w,h);
+    for(var i=0;i<cols.length;i++){
+      var c=cols[i];
+      ctx.fillStyle='rgba(255,215,0,'+(Math.random()*0.3+0.1)+')';
+      ctx.font='14px monospace';
+      ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*14,c.y);
+      c.y+=c.speed*3;
+      if(c.y>h){c.y=0;c.speed=Math.random()*3+1}
+    }
+    requestAnimationFrame(draw);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  draw();
+})();
+
+// TICKER
+(function(){
+  var data=[
+    {s:'BTC','$67,432','+2.4%','up'},{s:'ETH','$3,891','+1.8%','up'},
+    {s:'SOL','$178','+5.2%','up'},{s:'ADA','$0.62','-0.8%','down'},
+    {s:'DOT','$8.45','+3.1%','up'},{s:'LINK','$18.2','+1.2%','up'},
+    {s:'MATIC','$0.89','-1.5%','down'},{s:'AVAX','$42.1','+4.7%','up'},
+  ];
+  var html='';
+  for(var i=0;i<2;i++)data.forEach(function(d){
+    html+='<div class="ticker-item"><span class="ticker-symbol">'+d.s+'</span><span class="ticker-price">'+d[1]+'</span><span class="ticker-change '+d[3]+'">'+d[2]+'</span></div>';
+  });
+  document.getElementById('ticker').innerHTML=html;
+})();
+
+(function(){
+  var els=document.querySelectorAll('.feature-card,.price-card');
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)'}
+    });
+  },{threshold:0.1});
+  els.forEach(function(el){
+    el.style.opacity='0';el.style.transform='translateY(30px)';
+    el.style.transition='opacity 0.6s ease,transform 0.6s ease';
+    obs.observe(el);
+  });
+})();
+
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click',function(e){
+    e.preventDefault();
+    var t=document.querySelector(a.getAttribute('href'));
+    if(t)t.scrollIntoView({behavior:'smooth'});
+  });
+});
+</script>
+</body>
+</html>
